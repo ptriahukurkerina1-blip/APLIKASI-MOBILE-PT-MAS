@@ -4837,7 +4837,7 @@ body.iphone-bezel-mode {
 }
 
   </style>
-<script src="/_aistudio-iframe.js?v=1f94f900"></script></head>
+<script src="/_aistudio-iframe.js?v=29045eb3"></script></head>
 <body>
 
 
@@ -5765,7 +5765,12 @@ body.iphone-bezel-mode {
     });
   }
 
+  function bolehAksesTambahKaryawan_() {
+    return String((S && S.jabatan) || '').trim().toUpperCase() === 'MANAGER';
+  }
+
   function terapkanMenuAkses(allowedMenus, customCategories) {
+    const isManager = bolehAksesTambahKaryawan_();
     const list = Array.isArray(allowedMenus) ? allowedMenus.slice() : [];
     if (list.length > 0 && list.indexOf('absensi') < 0) {
       list.push('absensi');
@@ -5779,8 +5784,17 @@ body.iphone-bezel-mode {
     if (list.length > 0 && list.indexOf('daftarhadir') < 0) {
       list.push('daftarhadir');
     }
-    if (list.length > 0 && list.indexOf('tambahkaryawan') < 0) {
-      list.push('tambahkaryawan');
+    // Menu Tambahkan Karyawan HANYA untuk status jabatan MANAGER (File sumber 1GvHN_MYFG59DgHWy466H4FX5fcp-zFZ3A0CHzdT3jEI Kolom B)
+    if (isManager) {
+      if (list.length > 0 && list.indexOf('tambahkaryawan') < 0) {
+        list.push('tambahkaryawan');
+      }
+    } else {
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (list[i] === 'tambahkaryawan') {
+          list.splice(i, 1);
+        }
+      }
     }
     const rawCats = (Array.isArray(customCategories) && customCategories.length > 0)
       ? customCategories
@@ -5789,7 +5803,9 @@ body.iphone-bezel-mode {
     // Pastikan submenu Absensi selalu muncul di bawah HR & KARYAWAN
     const cats = rawCats.map(c => ({
       judul: c && c.judul ? c.judul : '',
-      items: Array.isArray(c && c.items) ? c.items.slice() : []
+      items: Array.isArray(c && c.items)
+        ? c.items.filter(it => isManager || !it || it.key !== 'tambahkaryawan').slice()
+        : []
     }));
     const adaAbsensiDiCats = cats.some(c => c.items.some(it => it && it.key === 'absensi'));
     if (!adaAbsensiDiCats) {
@@ -5839,16 +5855,18 @@ body.iphone-bezel-mode {
         cats.push({ judul: 'PUSAT KOMUNIKASI', items: [{ key: 'daftarhadir', judul: 'Daftar Hadir' }] });
       }
     }
-    const adaTambahKaryawanDiCats = cats.some(c => c.items.some(it => it && it.key === 'tambahkaryawan'));
-    if (!adaTambahKaryawanDiCats) {
-      const admCat = cats.find(c => {
-        const ju = String(c.judul || '').toUpperCase();
-        return ju.indexOf('PUSAT ADMINISTRASI') >= 0 || ju.indexOf('ADMINISTRASI') >= 0;
-      });
-      if (admCat) {
-        admCat.items.push({ key: 'tambahkaryawan', judul: 'Tambahkan Karyawan' });
-      } else {
-        cats.push({ judul: 'PUSAT ADMINISTRASI', items: [{ key: 'tambahkaryawan', judul: 'Tambahkan Karyawan' }] });
+    if (isManager) {
+      const adaTambahKaryawanDiCats = cats.some(c => c.items.some(it => it && it.key === 'tambahkaryawan'));
+      if (!adaTambahKaryawanDiCats) {
+        const admCat = cats.find(c => {
+          const ju = String(c.judul || '').toUpperCase();
+          return ju.indexOf('PUSAT ADMINISTRASI') >= 0 || ju.indexOf('ADMINISTRASI') >= 0;
+        });
+        if (admCat) {
+          admCat.items.push({ key: 'tambahkaryawan', judul: 'Tambahkan Karyawan' });
+        } else {
+          cats.push({ judul: 'PUSAT ADMINISTRASI', items: [{ key: 'tambahkaryawan', judul: 'Tambahkan Karyawan' }] });
+        }
       }
     }
 
@@ -6185,7 +6203,7 @@ body.iphone-bezel-mode {
 
   function gambarDiagramPeriode(pc, bhSetOverride) {
     const rawSeries = Array.isArray(pc && pc.series) ? pc.series : [];
-    // Urutkan periode arsip (1Uc3t1J80coRzYsSpIvhm8Y1Rl-anZSZgOUCNa10hdBU) di kiri dan periode berjalan (16Cqr8mUwvM2Hd8HrNSgzoOF_NvDPmlxLMi0ik9GiGzc) di paling kanan
+    // Urutkan periode arsip (1Uc3t1J80coRzYsSpIvhm8Y1Rl-anZSZgOUCNa10hdBU) di kiri dan periode berjalan (1ixxg9JBGhb8zgvmfJjdakygdzRNFtn7QAhLncDMC_4c) di paling kanan
     const archList = rawSeries.filter(s => s && !s.isBerjalan);
     const runList = rawSeries.filter(s => s && s.isBerjalan);
     const series = archList.concat(runList);
@@ -6216,7 +6234,7 @@ body.iphone-bezel-mode {
         ? s.activeProds
         : Object.keys(vals);
 
-      // Pada periode berjalan (16Cqr8mUwvM2Hd8HrNSgzoOF_NvDPmlxLMi0ik9GiGzc), pastikan hanya produk yang ada di Kolom BH saat ini yang ditampilkan
+      // Pada periode berjalan (1ixxg9JBGhb8zgvmfJjdakygdzRNFtn7QAhLncDMC_4c), pastikan hanya produk yang ada di Kolom BH saat ini yang ditampilkan
       if (isRun && hasBhFilter && (!Array.isArray(s && s.activeProds) || s.activeProds.length === 0)) {
         rawProds = rawProds.filter(p => Boolean(bhAllowed[String(p || '').trim().toUpperCase()]));
       }
@@ -9903,7 +9921,7 @@ body.iphone-bezel-mode {
 
   function bolehDownloadPerformance_() {
     const jab = String((S && S.jabatan) || '').trim().toUpperCase();
-    return jab === 'DIREKTUR' || jab === 'TL' || jab === 'TEAM LEADER' || jab === 'ADMIN';
+    return jab === 'MANAGER' || jab === 'TL' || jab === 'TEAM LEADER' || jab === 'ADMIN';
   }
 
   function sinkronTombolDownloadPerformance_() {
@@ -10247,7 +10265,7 @@ body.iphone-bezel-mode {
 
   function downloadExcelPaymentPerformance() {
     if (!bolehDownloadPerformance_()) {
-      alert('Akses ditolak. Tombol download hanya untuk jabatan Direktur, TL, dan Admin.');
+      alert('Akses ditolak. Tombol download hanya untuk jabatan Manager, TL, dan Admin.');
       return;
     }
     if (!PF_CURRENT_PAYMENT_LIST || PF_CURRENT_PAYMENT_LIST.length === 0) {
@@ -10302,7 +10320,7 @@ body.iphone-bezel-mode {
 
   function downloadExcelPtpPerformance() {
     if (!bolehDownloadPerformance_()) {
-      alert('Akses ditolak. Tombol download hanya untuk jabatan Direktur, TL, dan Admin.');
+      alert('Akses ditolak. Tombol download hanya untuk jabatan Manager, TL, dan Admin.');
       return;
     }
     if (!PF_CURRENT_PTP_LIST || PF_CURRENT_PTP_LIST.length === 0) {
@@ -11063,7 +11081,7 @@ body.iphone-bezel-mode {
 
   // ============================================================================
   // MENU PUSAT KOMUNIKASI -> SUB MENU: DAFTAR HADIR
-  // Sumber File: 1JGkYTqyFDnGkVTqZrUE-W8x0t_lUy2TM39Hmr4BLE-4
+  // Sumber File: 1liM-GSsYiUYHK0084saPyhbF-tJpPHzcWsOSPmxqug8
   // Filter: Kolom A (Tanggal) otomatis default ke tanggal hari ini saat dibuka
   // Urutan Kartu: 1) Nama (Kolom B), 2) Foto (Kolom D), 3) Jam Masuk (Kolom C)
   // Tampilan: 2 Foto dalam satu baris (Grid 2 Kolom)
@@ -11429,19 +11447,27 @@ body.iphone-bezel-mode {
 
   // ============================================================================
   // MENU PUSAT ADMINISTRASI -> SUB MENU: TAMBAHKAN KARYAWAN
+  // HANYA UNTUK STATUS JABATAN MANAGER SAJA
   // Target Spreadsheet ID: 1GvHN_MYFG59DgHWy466H4FX5fcp-zFZ3A0CHzdT3jEI
-  // Kolom A: Nama | Kolom B: Jabatan | Kolom C: Password | Kolom D: Email
+  // Kolom A: Nama | Kolom B: Jabatan (Wajib MANAGER) | Kolom C: Password | Kolom D: Email
   // ============================================================================
   let TK_STATE = {
     items: [],
-    jabatanOptions: ['KOMISARIS', 'DIREKTUR', 'ADMIN', 'TL', 'DC', 'FC'],
+    jabatanOptions: ['KOMISARIS', 'MANAGER', 'ADMIN', 'TL', 'DC', 'FC'],
     searchQuery: '',
     showPassForm: false
   };
 
   function muatHalamanTambahKaryawan() {
+    if (!bolehAksesTambahKaryawan_()) {
+      $('content').innerHTML =
+        '<div class="panel placeholder"><div class="big">🔒</div>' +
+        '<h3>Akses Terbatas</h3>' +
+        '<p>Menu ➕ Tambahkan Karyawan hanya dapat diakses oleh status jabatan <b>MANAGER</b>.</p></div>';
+      return;
+    }
     TK_STATE.searchQuery = '';
-    const jabOpts = (TK_STATE.jabatanOptions || ['KOMISARIS', 'DIREKTUR', 'ADMIN', 'TL', 'DC', 'FC'])
+    const jabOpts = (TK_STATE.jabatanOptions || ['KOMISARIS', 'MANAGER', 'ADMIN', 'TL', 'DC', 'FC'])
       .map(j => '<option value="' + esc(j) + '">' + esc(j) + '</option>')
       .join('');
 
