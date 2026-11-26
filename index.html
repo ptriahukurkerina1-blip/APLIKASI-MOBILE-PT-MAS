@@ -1409,6 +1409,26 @@ table.pc tr.sub td {
 .enum-drop.open {
   display: block;
 }
+#picAwalMenu.open, #targetPicMenu.open {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 10px;
+  align-items: center;
+  max-height: 280px;
+  padding: 10px;
+}
+#picAwalMenu .enum-item, #targetPicMenu .enum-item {
+  min-width: 0;
+  overflow: hidden;
+}
+#picAwalMenu .enum-item span, #targetPicMenu .enum-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#picAwalMenu .tg-empty, #targetPicMenu .tg-empty {
+  grid-column: 1 / -1;
+}
 .enum-item {
   display: flex;
   align-items: center;
@@ -4837,7 +4857,7 @@ body.iphone-bezel-mode {
 }
 
   </style>
-<script src="/_aistudio-iframe.js?v=29045eb3"></script></head>
+</head>
 <body>
 
 
@@ -4977,6 +4997,25 @@ body.iphone-bezel-mode {
       <button class="outline" onclick="tutupModalHistoris()">Tutup ✕</button>
     </div>
     <div class="mbody" id="mhBody"></div>
+  </div>
+</div>
+
+<!-- ================= POP UP WARNING KONFIRMASI RETUR AKUN (BACKGROUND MERAH) ================= -->
+<div class="modal" id="modalReturWarning" onclick="if(event.target===this)tutupModalReturWarning()" style="z-index:2200">
+  <div class="mbox" style="max-width:460px;background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%) !important;border:2px solid #fca5a5 !important;color:#ffffff !important;box-shadow:0 24px 60px rgba(220,38,38,0.65)">
+    <div class="mhead" style="background:rgba(127,29,29,0.6) !important;border-bottom:1px solid rgba(254,202,202,0.35);color:#ffffff">
+      <h3 style="color:#ffffff !important;margin:0;display:flex;align-items:center;gap:8px">⚠️ PERINGATAN RETUR AKUN</h3>
+    </div>
+    <div class="mbody" style="text-align:center;padding:24px 20px;color:#ffffff;background:transparent">
+      <div style="font-size:42px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:16px;font-weight:800;line-height:1.5;color:#ffffff;letter-spacing:0.3px;margin-bottom:22px">
+        AKUN AKAN DIPINDAHKAN KE GUDANG DATA, APAKAH ANDA YAKIN?
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <button type="button" id="btnReturYa" onclick="konfirmasiReturAkun(true)" style="background:#ffffff !important;color:#b91c1c !important;border:2px solid #ffffff !important;font-weight:800;font-size:14.5px;border-radius:12px;min-height:46px;box-shadow:0 6px 16px rgba(0,0,0,0.28)">Ya</button>
+        <button type="button" id="btnReturTidak" onclick="konfirmasiReturAkun(false)" style="background:rgba(69,10,10,0.65) !important;color:#ffffff !important;border:2px solid rgba(254,202,202,0.75) !important;font-weight:800;font-size:14.5px;border-radius:12px;min-height:46px;box-shadow:none">Tidak</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -6571,6 +6610,50 @@ body.iphone-bezel-mode {
     }).join('');
   }
 
+  function downloadExcelProduktivitas() {
+    const btn = $('btnDownloadProdExcel');
+    const oldHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengunduh...';
+    }
+    api('getDataExcelProduktivitas', S.token).then(res => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml || '<i class="fas fa-file-excel"></i> Download Excel';
+      }
+      if (!res || !res.sukses) {
+        alert((res && res.pesan) ? res.pesan : 'Gagal mengambil data produktivitas bulan ini.');
+        return;
+      }
+      const headers = Array.isArray(res.headers) && res.headers.length > 0
+        ? res.headers
+        : ['USER ID', 'TANGGAL INPUT', 'NIK', 'DEBTOR ID', 'NAMA NASABAH', 'KATEGORI', 'PIC', 'FOTO KUNJUNGAN', 'ACTION', 'KETERANGAN', 'RESULT', 'TANGGAL PTP', 'JUMLAH PTP', 'ISI KRONOLOGI'];
+      const rows = Array.isArray(res.rows) ? res.rows : [];
+      if (rows.length === 0) {
+        alert('Belum ada data Produktivitas Penanganan pada bulan ini (' + (res.bulan || '') + ').');
+        return;
+      }
+      const fileBase = 'Produktivitas_Penanganan_' + (res.bulan || pfSanitizeFileName_('Bulan_Ini', 'Produktivitas'));
+      const aoa = [headers].concat(rows);
+      if (typeof XLSX !== 'undefined' && XLSX && XLSX.utils) {
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = headers.map(() => ({ wch: 20 }));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Produktivitas');
+        XLSX.writeFile(wb, fileBase + '.xlsx');
+      } else {
+        pfDownloadFallbackXls_(headers, rows, 'Produktivitas', fileBase);
+      }
+    }).catch(err => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml || '<i class="fas fa-file-excel"></i> Download Excel';
+      }
+      alert('Gagal mengunduh Excel: ' + (err && err.message ? err.message : err));
+    });
+  }
+
   let CUR = 'home';
 
   // Helper Kompresi Gambar Otomatis (Mencegah gagal preview & gagal simpan akibat foto kamera 5-12MB)
@@ -7258,6 +7341,14 @@ body.iphone-bezel-mode {
     const waktuOtomatis = formatWaktuSekarang_();
     const bts = batasTanggalPtp_();
 
+    const jabUserLogin = String((S && S.jabatan) || '').trim().toUpperCase();
+    const isUserFC = (jabUserLogin === 'FC' || jabUserLogin === 'FIELD COLLECTOR' || jabUserLogin === 'FIELD COLL');
+    const listPilihanAction = isUserFC
+      ? ['KUNJUNGI USER', 'KUNJUNGI KELUARGA', 'KUNJUNGI KANTOR', 'ACTION LAINNYA']
+      : ['HUBUNGI USER', 'HUBUNGI KELUARGA', 'HUBUNGI KANTOR', 'ACTION LAINNYA'];
+    const actionOptionsHtml = '<option value="">Pilih tindakan</option>' +
+      listPilihanAction.map(act => '<option value="' + esc(act) + '">' + esc(act) + '</option>').join('');
+
     $('mhTitle').textContent = '➕ Catat Penanganan — ' + (item.nama || '-');
     $('mhBody').innerHTML =
       '<div class="hist-form-grid">' +
@@ -7283,11 +7374,7 @@ body.iphone-bezel-mode {
         '<div>' +
           '<label>Tindakan (Action)</label>' +
           '<select id="hpAction">' +
-            '<option value="">Pilih tindakan</option>' +
-            '<option value="HUBUNGI USER">HUBUNGI USER</option>' +
-            '<option value="HUBUNGI KELUARGA">HUBUNGI KELUARGA</option>' +
-            '<option value="HUBUNGI KANTOR">HUBUNGI KANTOR</option>' +
-            '<option value="ACTION LAINNYA">ACTION LAINNYA</option>' +
+            actionOptionsHtml +
           '</select>' +
         '</div>' +
         '<div>' +
@@ -7297,6 +7384,7 @@ body.iphone-bezel-mode {
             '<option value="NO RESPON">NO RESPON</option>' +
             '<option value="VALID">VALID</option>' +
             '<option value="PTP">PTP</option>' +
+            '<option value="RETUR AKUN">RETUR AKUN</option>' +
           '</select>' +
         '</div>' +
       '</div>' +
@@ -7340,9 +7428,54 @@ body.iphone-bezel-mode {
     $('modalHistoris').classList.add('show');
   }
 
+  let PENDING_HISTORIS_PAYLOAD = null;
+
+  function tutupModalReturWarning() {
+    PENDING_HISTORIS_PAYLOAD = null;
+    const m = $('modalReturWarning');
+    if (m) m.classList.remove('show');
+  }
+
+  function konfirmasiReturAkun(ya) {
+    const payload = PENDING_HISTORIS_PAYLOAD;
+    tutupModalReturWarning();
+    if (ya && payload) {
+      eksekusiSimpanHistoris_(payload);
+    }
+  }
+
   function tutupModalHistoris() {
+    tutupModalReturWarning();
     hentikanKameraKunjungan_();
     $('modalHistoris').classList.remove('show');
+  }
+
+  function eksekusiSimpanHistoris_(payload) {
+    if (!payload) return;
+    loading('btnSimpanHistoris', true, '💾 Simpan Laporan');
+    api('simpanHistorisPenanganan', S.token, payload).then(res => {
+      loading('btnSimpanHistoris', false, '💾 Simpan Laporan');
+      if (!res.sukses) return pesan('msgModalHistoris', res.pesan || 'Gagal menyimpan data.', 'err');
+      if (HIST_NASABAH_AKTIF) {
+        delete HIST_NASABAH_AKTIF._historisRows;
+        if (String(payload.result || '').trim().toUpperCase() === 'RETUR AKUN') {
+          HIST_NASABAH_AKTIF.kategori = 'GUDANG';
+          HIST_NASABAH_AKTIF.result = 'RETUR AKUN';
+          if (TG_KATEGORI_LIST.indexOf('GUDANG') < 0) {
+            TG_KATEGORI_LIST.push('GUDANG');
+          }
+          if (typeof renderSubmenuKategoriTagihan_ === 'function') renderSubmenuKategoriTagihan_();
+          if (typeof renderTagihan === 'function') renderTagihan();
+        }
+      }
+      pesan('msgModalHistoris', res.pesan, 'ok');
+      setTimeout(() => {
+        tutupModalHistoris();
+      }, 900);
+    }).catch(e => {
+      loading('btnSimpanHistoris', false, '💾 Simpan Laporan');
+      pesan('msgModalHistoris', 'Gagal: ' + e.message, 'err');
+    });
   }
 
   function simpanFormHistoris() {
@@ -7363,11 +7496,12 @@ body.iphone-bezel-mode {
       return pesan('msgModalHistoris', 'Tanggal PTP harus berada di bulan berjalan (' + bts.min + ' s/d ' + bts.max + ').', 'err');
     }
 
-    loading('btnSimpanHistoris', true, '💾 Simpan Laporan');
     const payload = {
+      row: HIST_NASABAH_AKTIF.row || 0,
       userId: HIST_NASABAH_AKTIF.userId || '',
       nik: HIST_NASABAH_AKTIF.nik || '',
       nama: HIST_NASABAH_AKTIF.nama || '',
+      kategori: HIST_NASABAH_AKTIF.kategori || '',
       pic: HIST_NASABAH_AKTIF.pic || S.nama || '',
       action: action,
       result: result,
@@ -7378,18 +7512,14 @@ body.iphone-bezel-mode {
       mimeType: FILE_FOTO_KUNJUNGAN ? FILE_FOTO_KUNJUNGAN.mimeType : ''
     };
 
-    api('simpanHistorisPenanganan', S.token, payload).then(res => {
-      loading('btnSimpanHistoris', false, '💾 Simpan Laporan');
-      if (!res.sukses) return pesan('msgModalHistoris', res.pesan || 'Gagal menyimpan data.', 'err');
-      if (HIST_NASABAH_AKTIF) delete HIST_NASABAH_AKTIF._historisRows;
-      pesan('msgModalHistoris', res.pesan, 'ok');
-      setTimeout(() => {
-        tutupModalHistoris();
-      }, 900);
-    }).catch(e => {
-      loading('btnSimpanHistoris', false, '💾 Simpan Laporan');
-      pesan('msgModalHistoris', 'Gagal: ' + e.message, 'err');
-    });
+    if (result.toUpperCase() === 'RETUR AKUN') {
+      PENDING_HISTORIS_PAYLOAD = payload;
+      const mWarn = $('modalReturWarning');
+      if (mWarn) mWarn.classList.add('show');
+      return;
+    }
+
+    eksekusiSimpanHistoris_(payload);
   }
 
   // ---------- POP UP DETAIL NASABAH ----------
@@ -9146,10 +9276,13 @@ body.iphone-bezel-mode {
   function getRotasiFilteredRows() {
     const searchEl = $('rotSearchInput');
     const searchQuery = (searchEl ? searchEl.value : '').toLowerCase().trim();
+    const isAllPicAwalSelected = (rotAllPicsAwalList.length > 0 && rotSelectedPicsAwal.size === rotAllPicsAwalList.length);
+    const selectedPicLower = new Set(Array.from(rotSelectedPicsAwal).map(p => String(p || '').trim().toLowerCase()));
 
     return rotAllRowsData.filter(row => {
       const matchProduct = (rotActiveProduct === 'ALL') || (row.produkBH === rotActiveProduct);
-      const matchPic = rotSelectedPicsAwal.size === 0 || rotSelectedPicsAwal.has(row.picAT);
+      const rowPicLower = String(row.picAT || '').trim().toLowerCase();
+      const matchPic = rotSelectedPicsAwal.size === 0 || isAllPicAwalSelected || rotSelectedPicsAwal.has(row.picAT) || selectedPicLower.has(rowPicLower);
 
       let matchBA = true;
       if (rotActiveBA === 'EMPTY') {
@@ -11683,7 +11816,14 @@ body.iphone-bezel-mode {
       $('content').innerHTML =
         '<div class="panel"><h3 class="pt">Pencapaian Pembayaran per Produk</h3><div id="chartBox" class="placeholder">Memuat grafik pembayaran...</div></div>' +
         '<div class="panel clickable" onclick="bukaPlan()"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px"><h3 class="pt" id="barTitle" style="margin:0">Plan Closing : Rp ...</h3><span class="pic-badge">Rincian Tim ➔</span></div><div id="barBox" class="placeholder">Memuat plan closing...</div></div>' +
-        '<div class="panel clickable" onclick="bukaProd()"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px"><h3 class="pt" style="margin:0">Produktivitas Penanganan</h3><span class="pic-badge">Detail ➔</span></div>' +
+        '<div class="panel clickable" onclick="bukaProd()">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+            '<h3 class="pt" style="margin:0">Produktivitas Penanganan</h3>' +
+            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+              '<button type="button" id="btnDownloadProdExcel" class="pf-btn-download" onclick="event.stopPropagation();downloadExcelProduktivitas()" title="Download Excel Produktivitas Bulan Ini"><i class="fas fa-file-excel"></i> Download Excel</button>' +
+              '<span class="pic-badge">Detail ➔</span>' +
+            '</div>' +
+          '</div>' +
         '<div id="prodBox" class="placeholder">Memuat produktivitas...</div></div>' +
         '<div class="panel"><h3 class="pt">Diagram Pencapaian per Periode &amp; Produk</h3><div id="periodeChartBox" class="placeholder">Memuat diagram periode...</div></div>';
       muatDashboard();
@@ -11825,37 +11965,6 @@ body.iphone-bezel-mode {
   })();
 
   pulihkanSesiLogin_();
-
-
-  window.doDemoLogin = function(customUser) {
-    window.__BACKEND_MODE__ = 'DEMO';
-    const userToLogin = customUser || 'JEFRY MAHALIM SITEPU';
-    const inpNama = $('loginNama');
-    const inpPass = $('loginPass');
-    if (inpNama) inpNama.value = userToLogin;
-    if (inpPass) inpPass.value = 'demo2026';
-    doLogin();
-  };
-
-  window.switchDemoRole = function(customUser) {
-    window.__BACKEND_MODE__ = 'DEMO';
-    api('prosesLogin', customUser, 'demo2026').then(res => {
-      if (!res || !res.sukses) return;
-      S = {
-        token: res.token,
-        nama: res.nama,
-        jabatan: res.jabatan,
-        menus: res.menus || [],
-        menuCategories: Array.isArray(res.menuCategories) ? res.menuCategories : []
-      };
-      simpanSesiLokal_(S);
-      masukKeDashboard_();
-      if (typeof window.showIosGoldToast === 'function') {
-        window.showIosGoldToast('Beralih ke profil: ' + S.nama + ' (' + S.jabatan + ')', 'ok');
-      }
-    });
-  };
-  
 </script>
 </body>
 </html>
